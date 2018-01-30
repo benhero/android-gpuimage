@@ -72,7 +72,9 @@ public class GPUImageFilterGroup extends GPUImageFilter {
      * @param filters the filters which represent this filter
      */
     public GPUImageFilterGroup(List<GPUImageFilter> filters) {
-        mFilters.addAll(filters);
+        if (filters != null) {
+            mFilters.addAll(filters);
+        }
         updateMergedFilters();
 
         mGLCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)

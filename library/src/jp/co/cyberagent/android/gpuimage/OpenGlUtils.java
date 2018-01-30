@@ -16,14 +16,14 @@
 
 package jp.co.cyberagent.android.gpuimage;
 
-import java.nio.IntBuffer;
-
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.hardware.Camera.Size;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
+
+import java.nio.IntBuffer;
 
 public class OpenGlUtils {
     public static final int NO_TEXTURE = -1;
@@ -32,6 +32,13 @@ public class OpenGlUtils {
         return loadTexture(img, usedTexId, true);
     }
 
+    /**
+     * 加载纹理ID
+     *
+     * @param img       Bitmap
+     * @param usedTexId 已使用的纹理ID
+     * @param recycle   是否回收Bitmap
+     */
     public static int loadTexture(final Bitmap img, final int usedTexId, final boolean recycle) {
         int textures[] = new int[1];
         if (usedTexId == NO_TEXTURE) {

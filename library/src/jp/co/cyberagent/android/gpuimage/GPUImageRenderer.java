@@ -26,10 +26,6 @@ import android.hardware.Camera.Size;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView.Renderer;
 
-import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
-
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.opengles.GL10;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -37,6 +33,11 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
+import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
 
 import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
 
@@ -66,7 +67,13 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     private int mImageHeight;
     private int mAddedPadding;
 
+    /**
+     * 绘制前的任务队列
+     */
     private final Queue<Runnable> mRunOnDraw;
+    /**
+     * 绘制后的任务队列
+     */
     private final Queue<Runnable> mRunOnDrawEnd;
     private Rotation mRotation;
     private boolean mFlipHorizontal;
@@ -124,25 +131,25 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
         }
     }
 
-    /**
-     * Sets the background color
-     *
-     * @param red red color value
-     * @param green green color value
-     * @param blue red color value
-     */
-    public void setBackgroundColor(float red, float green, float blue) {
-        mBackgroundRed = red;
-        mBackgroundGreen = green;
-        mBackgroundBlue = blue;
-    }
-
     private void runAll(Queue<Runnable> queue) {
         synchronized (queue) {
             while (!queue.isEmpty()) {
                 queue.poll().run();
             }
         }
+    }
+
+    /**
+     * 设置背景色
+     *
+     * @param red   red color value
+     * @param green green color value
+     * @param blue  red color value
+     */
+    public void setBackgroundColor(float red, float green, float blue) {
+        mBackgroundRed = red;
+        mBackgroundGreen = green;
+        mBackgroundBlue = blue;
     }
 
     @Override
@@ -155,14 +162,17 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
             runOnDraw(new Runnable() {
                 @Override
                 public void run() {
+                    // YUV数据转RGBA格式
                     GPUImageNativeLibrary.YUVtoRBGA(data, previewSize.width, previewSize.height,
                             mGLRgbBuffer.array());
+                    // 加载纹理ID
                     mGLTextureId = OpenGlUtils.loadTexture(mGLRgbBuffer, previewSize, mGLTextureId);
                     camera.addCallbackBuffer(data);
 
-                    if (mImageWidth != previewSize.width) {
+                    if (mImageWidth != previewSize.width || mImageHeight != previewSize.height) {
                         mImageWidth = previewSize.width;
                         mImageHeight = previewSize.height;
+                        // 预览尺寸发生改变
                         adjustImageScaling();
                     }
                 }
@@ -188,9 +198,11 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
         });
     }
 
+    /**
+     * 设置新的滤镜：对旧的滤镜进行销毁操作，对新的滤镜进行初始化操作
+     */
     public void setFilter(final GPUImageFilter filter) {
         runOnDraw(new Runnable() {
-
             @Override
             public void run() {
                 final GPUImageFilter oldFilter = mFilter;
@@ -205,9 +217,11 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
         });
     }
 
+    /**
+     * 销毁原有的图片纹理
+     */
     public void deleteImage() {
         runOnDraw(new Runnable() {
-
             @Override
             public void run() {
                 GLES20.glDeleteTextures(1, new int[]{
@@ -222,6 +236,11 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
         setImageBitmap(bitmap, true);
     }
 
+    /**
+     * 设置图片Bitmap
+     *
+     * @param recycle 生成纹理Id后，是否立刻回收Bitmap对象
+     */
     public void setImageBitmap(final Bitmap bitmap, final boolean recycle) {
         if (bitmap == null) {
             return;
@@ -233,6 +252,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
             public void run() {
                 Bitmap resizedBitmap = null;
                 if (bitmap.getWidth() % 2 == 1) {
+                    // 对于长或宽为奇数的做处理
                     resizedBitmap = Bitmap.createBitmap(bitmap.getWidth() + 1, bitmap.getHeight(),
                             Bitmap.Config.ARGB_8888);
                     Canvas can = new Canvas(resizedBitmap);
@@ -283,6 +303,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
 
         float ratioWidth = imageWidthNew / outputWidth;
         float ratioHeight = imageHeightNew / outputHeight;
+        // 以上都是计算出图片缩放到容器上后，占容器的比例值，用于下面正确地绘制到容器的位置上
 
         float[] cube = CUBE;
         float[] textureCords = TextureRotationUtil.getRotation(mRotation, mFlipHorizontal, mFlipVertical);
@@ -315,7 +336,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     }
 
     public void setRotationCamera(final Rotation rotation, final boolean flipHorizontal,
-            final boolean flipVertical) {
+                                  final boolean flipVertical) {
         setRotation(rotation, flipVertical, flipHorizontal);
     }
 

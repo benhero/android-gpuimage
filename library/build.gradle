@@ -60,3 +60,7 @@ android {
 
 apply from: 'android-artifacts.gradle'
 apply from: 'central-publish.gradle'
+
+dependencies {
+    compile 'com.android.support:appcompat-v7:24.0.0'
+}

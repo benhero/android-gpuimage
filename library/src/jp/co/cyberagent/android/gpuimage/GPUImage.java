@@ -276,7 +276,7 @@ public class GPUImage {
     }
 
     /**
-     * Gets the given bitmap with current filter applied as a Bitmap.
+     * 使用当前的滤镜对传进来的Bitmap进行处理
      *
      * @param bitmap the bitmap on which the current filter should be applied
      * @return the bitmap with filter applied

@@ -1,8 +1,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#000000"
-    android:orientation="vertical">
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical">
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -11,16 +10,23 @@
 
         <jp.co.cyberagent.android.gpuimage.GPUImageView
             android:id="@+id/gpuimage"
-            android:layout_gravity="center"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"/>
+
+        <SurfaceView
+            android:id="@+id/video_surface"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"/>
 
         <SeekBar
             android:id="@+id/seekBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:max="100" />
+            android:max="100"/>
     </FrameLayout>
 
     <LinearLayout
@@ -32,13 +38,13 @@
             android:id="@+id/button_choose_filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Choose filter" />
+            android:text="Choose filter"/>
 
         <Button
             android:id="@+id/button_save"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Save" />
+            android:text="Save"/>
     </LinearLayout>
 
 </LinearLayout>

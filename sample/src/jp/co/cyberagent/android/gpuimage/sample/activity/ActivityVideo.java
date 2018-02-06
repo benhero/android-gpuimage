@@ -2,6 +2,7 @@ package jp.co.cyberagent.android.gpuimage.sample.activity;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.BitmapFactory;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -19,6 +20,7 @@ import android.widget.Toast;
 import jp.co.cyberagent.android.gpuimage.GPUImage;
 import jp.co.cyberagent.android.gpuimage.GPUImageFilter;
 import jp.co.cyberagent.android.gpuimage.GPUImageFilterGroup;
+import jp.co.cyberagent.android.gpuimage.GPUImageLookupFilter;
 import jp.co.cyberagent.android.gpuimage.GPUImageOESFilter;
 import jp.co.cyberagent.android.gpuimage.GPUImageRenderer;
 import jp.co.cyberagent.android.gpuimage.GPUImageView;
@@ -153,7 +155,10 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
             GPUImageFilterGroup gpuImageFilterGroup = new GPUImageFilterGroup();
             mFilter = gpuImageFilterGroup;
 //            gpuImageFilterGroup.addFilter(filter);
+            GPUImageLookupFilter amatorka = new GPUImageLookupFilter();
+            amatorka.setBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.lookup_amatorka));
             gpuImageFilterGroup.addFilter(new GPUImageOESFilter());
+            gpuImageFilterGroup.addFilter(filter);
             mGPUImage.setFilter(mFilter);
             mFilterAdjuster = new GPUImageFilterTools.FilterAdjuster(mFilter);
 

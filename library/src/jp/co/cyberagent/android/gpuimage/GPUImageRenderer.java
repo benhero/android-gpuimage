@@ -80,9 +80,11 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     private boolean mFlipVertical;
     private GPUImage.ScaleType mScaleType = GPUImage.ScaleType.CENTER_CROP;
 
-    private float mBackgroundRed = 0;
-    private float mBackgroundGreen = 0;
-    private float mBackgroundBlue = 0;
+    private float mBackgroundRed = 1;
+    private float mBackgroundGreen = 1;
+    private float mBackgroundBlue = 1;
+
+    private IRenderCallback mSurfaceTextureCallback;
 
     public GPUImageRenderer(final GPUImageFilter filter) {
         mFilter = filter;
@@ -100,11 +102,33 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
         setRotation(Rotation.NORMAL, false, false);
     }
 
+    public GPUImageRenderer(GPUImageFilter filter, IRenderCallback surfaceTextureCallback) {
+        this(filter);
+        mSurfaceTextureCallback = surfaceTextureCallback;
+    }
+
     @Override
     public void onSurfaceCreated(final GL10 unused, final EGLConfig config) {
+        initTexture();
         GLES20.glClearColor(mBackgroundRed, mBackgroundGreen, mBackgroundBlue, 1);
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         mFilter.init();
+        if (mSurfaceTextureCallback != null) {
+            mSurfaceTextureCallback.onSurfaceTextureCreated(mSurfaceTexture);
+        }
+    }
+
+    private void initTexture() {
+        int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+        mGLTextureId = textures[0];
+        mSurfaceTexture = new SurfaceTexture(mGLTextureId);
+        mSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+            @Override
+            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                mSurfaceTextureCallback.onFrameAvailable(surfaceTexture.getTimestamp());
+            }
+        });
     }
 
     @Override
@@ -124,11 +148,11 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     public void onDrawFrame(final GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
         runAll(mRunOnDraw);
-        mFilter.onDraw(mGLTextureId, mGLCubeBuffer, mGLTextureBuffer);
-        runAll(mRunOnDrawEnd);
         if (mSurfaceTexture != null) {
             mSurfaceTexture.updateTexImage();
         }
+        mFilter.onDraw(mGLTextureId, mGLCubeBuffer, mGLTextureBuffer);
+        runAll(mRunOnDrawEnd);
     }
 
     private void runAll(Queue<Runnable> queue) {
@@ -288,42 +312,28 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     }
 
     private void adjustImageScaling() {
-        float outputWidth = mOutputWidth;
-        float outputHeight = mOutputHeight;
-        if (mRotation == Rotation.ROTATION_270 || mRotation == Rotation.ROTATION_90) {
-            outputWidth = mOutputHeight;
-            outputHeight = mOutputWidth;
-        }
-
-        float ratio1 = outputWidth / mImageWidth;
-        float ratio2 = outputHeight / mImageHeight;
-        float ratioMax = Math.max(ratio1, ratio2);
-        int imageWidthNew = Math.round(mImageWidth * ratioMax);
-        int imageHeightNew = Math.round(mImageHeight * ratioMax);
-
-        float ratioWidth = imageWidthNew / outputWidth;
-        float ratioHeight = imageHeightNew / outputHeight;
-        // 以上都是计算出图片缩放到容器上后，占容器的比例值，用于下面正确地绘制到容器的位置上
-
         float[] cube = CUBE;
         float[] textureCords = TextureRotationUtil.getRotation(mRotation, mFlipHorizontal, mFlipVertical);
-        if (mScaleType == GPUImage.ScaleType.CENTER_CROP) {
-            float distHorizontal = (1 - 1 / ratioWidth) / 2;
-            float distVertical = (1 - 1 / ratioHeight) / 2;
-            textureCords = new float[]{
-                    addDistance(textureCords[0], distHorizontal), addDistance(textureCords[1], distVertical),
-                    addDistance(textureCords[2], distHorizontal), addDistance(textureCords[3], distVertical),
-                    addDistance(textureCords[4], distHorizontal), addDistance(textureCords[5], distVertical),
-                    addDistance(textureCords[6], distHorizontal), addDistance(textureCords[7], distVertical),
-            };
-        } else {
-            cube = new float[]{
-                    CUBE[0] / ratioHeight, CUBE[1] / ratioWidth,
-                    CUBE[2] / ratioHeight, CUBE[3] / ratioWidth,
-                    CUBE[4] / ratioHeight, CUBE[5] / ratioWidth,
-                    CUBE[6] / ratioHeight, CUBE[7] / ratioWidth,
-            };
-        }
+
+//        if (mOutputWidth != 0 && mOutputHeight != 0) {
+//            PointF offset = VideoCropManager.getDrawOffset(mCropType, mCropRatio,
+//                    mIsRender, mSrcWidth, mSrcHeight, mOutputWidth, mOutputHeight, isHorizontalRotate(), mIsSrcRotate, mNeedSpliceRotate);
+//            if (mCropType == VideoCropType.TYPE_FULL) {
+//                cube = new float[]{
+//                        CUBE[0] - offset.x, CUBE[1] - offset.y,
+//                        CUBE[2] - offset.x, CUBE[3] - offset.y,
+//                        CUBE[4] - offset.x, CUBE[5] - offset.y,
+//                        CUBE[6] - offset.x, CUBE[7] - offset.y,
+//                };
+//            } else if (mCropType == VideoCropType.TYPE_FIT) {
+//                cube = new float[]{
+//                        CUBE[0] + offset.x, CUBE[1] + offset.y,
+//                        CUBE[2] - offset.x, CUBE[3] + offset.y,
+//                        CUBE[4] + offset.x, CUBE[5] - offset.y,
+//                        CUBE[6] - offset.x, CUBE[7] - offset.y,
+//                };
+//            }
+//        }
 
         mGLCubeBuffer.clear();
         mGLCubeBuffer.put(cube).position(0);

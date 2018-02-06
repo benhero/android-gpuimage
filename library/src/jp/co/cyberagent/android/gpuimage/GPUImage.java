@@ -74,6 +74,20 @@ public class GPUImage {
         mRenderer = new GPUImageRenderer(mFilter);
     }
 
+    public GPUImage(Context context, IRenderCallback surfaceTextureCallback) {
+        if (!supportsOpenGLES2(context)) {
+            throw new IllegalStateException("OpenGL ES 2.0 is not supported on this phone.");
+        }
+
+        mContext = context;
+//        mFilter = new GPUImageOESFilter();
+        GPUImageFilterGroup gpuImageFilterGroup = new GPUImageFilterGroup();
+        mFilter = gpuImageFilterGroup;
+//        gpuImageFilterGroup.addFilter(new GPUImageBoxBlurFilter());
+        gpuImageFilterGroup.addFilter(new GPUImageOESFilter());
+        mRenderer = new GPUImageRenderer(mFilter, surfaceTextureCallback);
+    }
+
     /**
      * Checks if OpenGL ES 2.0 is supported on the current device.
      *

@@ -2,20 +2,27 @@ package jp.co.cyberagent.android.gpuimage.sample.activity;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
+import android.view.Surface;
 import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
+import jp.co.cyberagent.android.gpuimage.GPUImage;
 import jp.co.cyberagent.android.gpuimage.GPUImageFilter;
+import jp.co.cyberagent.android.gpuimage.GPUImageFilterGroup;
+import jp.co.cyberagent.android.gpuimage.GPUImageOESFilter;
+import jp.co.cyberagent.android.gpuimage.GPUImageRenderer;
 import jp.co.cyberagent.android.gpuimage.GPUImageView;
+import jp.co.cyberagent.android.gpuimage.IRenderCallback;
 import jp.co.cyberagent.android.gpuimage.sample.GPUImageFilterTools;
 import jp.co.cyberagent.android.gpuimage.sample.R;
 
@@ -30,11 +37,12 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
     private static final int REQUEST_PICK_VIDEO = 1;
     private GPUImageFilter mFilter;
     private GPUImageFilterTools.FilterAdjuster mFilterAdjuster;
-    private GPUImageView mGPUImageView;
-    private SurfaceView mSurfaceView;
+    private GLSurfaceView mSurfaceView;
     private MediaPlayer mMediaPlayer;
     private SurfaceHolder mHolder;
     private String mPath;
+    private GPUImageRenderer mRenderer;
+    private GPUImage mGPUImage;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
@@ -43,9 +51,7 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
         ((SeekBar) findViewById(R.id.seekBar)).setOnSeekBarChangeListener(this);
         findViewById(R.id.button_choose_filter).setOnClickListener(this);
         findViewById(R.id.button_save).setOnClickListener(this);
-        mSurfaceView = (SurfaceView) findViewById(R.id.video_surface);
-
-        mGPUImageView = (GPUImageView) findViewById(R.id.gpuimage);
+        mSurfaceView = (GLSurfaceView) findViewById(R.id.video_surface);
 
         Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
         photoPickerIntent.setType("video/*");
@@ -54,47 +60,39 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
 
     private void initPlayer() {
         mMediaPlayer = new MediaPlayer();
-        mHolder = mSurfaceView.getHolder();
-        mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        mHolder.addCallback(new SurfaceHolder.Callback() {
+        mGPUImage = new GPUImage(this, new IRenderCallback() {
             @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-                mHolder = holder;
-                play();
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-                if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
-                    mMediaPlayer.stop();
+            public void onSurfaceTextureCreated(SurfaceTexture texture) {
+                try {
+                    Surface surface = new Surface(texture);
+                    mMediaPlayer.reset();
+                    mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                    mMediaPlayer.setSurface(surface);
+                    mMediaPlayer.setDataSource(mPath);
+                    mMediaPlayer.prepareAsync();
+                    mMediaPlayer.setLooping(false);
+                    mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                        @Override
+                        public void onPrepared(MediaPlayer mp) {
+                            mMediaPlayer.seekTo(0);
+                            mMediaPlayer.start();
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
+
+            @Override
+            public void onFrameAvailable(long frameTimeNanos) {
+                mSurfaceView.requestRender();
+            }
         });
+        mGPUImage.setGLSurfaceView(mSurfaceView);
     }
 
     private void play() {
-        try {
-            mMediaPlayer.reset();
-            mMediaPlayer.setDisplay(mHolder);
-            mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mMediaPlayer.setDataSource(mPath);
-            mMediaPlayer.prepareAsync();
-            mMediaPlayer.setLooping(true);
-            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                @Override
-                public void onPrepared(MediaPlayer mp) {
-                    mMediaPlayer.seekTo(0);
-                    mMediaPlayer.start();
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
     }
 
     @Override
@@ -123,7 +121,7 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
                     @Override
                     public void onGpuImageFilterChosenListener(final GPUImageFilter filter) {
                         switchFilterTo(filter);
-                        mGPUImageView.requestRender();
+                        mGPUImage.requestRender();
                     }
 
                 });
@@ -145,15 +143,18 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
 
     private void saveImage() {
         String fileName = System.currentTimeMillis() + ".jpg";
-        mGPUImageView.saveToPictures("GPUImage", fileName, this);
+//        mGPUImageView.saveToPictures("GPUImage", fileName, this);
 //        mGPUImageView.saveToPictures("GPUImage", fileName, 1600, 1600, this);
     }
 
     private void switchFilterTo(final GPUImageFilter filter) {
         if (mFilter == null
                 || (filter != null && !mFilter.getClass().equals(filter.getClass()))) {
-            mFilter = filter;
-            mGPUImageView.setFilter(mFilter);
+            GPUImageFilterGroup gpuImageFilterGroup = new GPUImageFilterGroup();
+            mFilter = gpuImageFilterGroup;
+//            gpuImageFilterGroup.addFilter(filter);
+            gpuImageFilterGroup.addFilter(new GPUImageOESFilter());
+            mGPUImage.setFilter(mFilter);
             mFilterAdjuster = new GPUImageFilterTools.FilterAdjuster(mFilter);
 
             findViewById(R.id.seekBar).setVisibility(
@@ -166,7 +167,7 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
         if (mFilterAdjuster != null) {
             mFilterAdjuster.adjust(progress);
         }
-        mGPUImageView.requestRender();
+        mGPUImage.requestRender();
     }
 
     @Override

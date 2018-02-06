@@ -20,7 +20,6 @@ import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.opengl.Matrix;
-import android.widget.Toast;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -192,7 +191,7 @@ public class GPUImageFilterTools {
 
     public static void showDialog(final Context context,
                                   final OnGpuImageFilterChosenListener listener) {
-        Toast.makeText(context, filters.names.get(index), Toast.LENGTH_SHORT).show();
+//        Toast.makeText(context, filters.names.get(index), Toast.LENGTH_SHORT).show();
         listener.onGpuImageFilterChosenListener(
                 createFilterForType(context, filters.filters.get(index)));
         index++;

@@ -25,8 +25,11 @@ import jp.co.cyberagent.android.gpuimage.GPUImageOESFilter;
 import jp.co.cyberagent.android.gpuimage.GPUImageRenderer;
 import jp.co.cyberagent.android.gpuimage.GPUImageView;
 import jp.co.cyberagent.android.gpuimage.IRenderCallback;
+import jp.co.cyberagent.android.gpuimage.Rotation;
 import jp.co.cyberagent.android.gpuimage.sample.GPUImageFilterTools;
 import jp.co.cyberagent.android.gpuimage.sample.R;
+import jp.co.cyberagent.android.gpuimage.sample.data.VideoInfo;
+import jp.co.cyberagent.android.gpuimage.sample.view.AspectFrameLayout;
 
 /**
  * 视频处理页
@@ -45,15 +48,19 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
     private String mPath;
     private GPUImageRenderer mRenderer;
     private GPUImage mGPUImage;
+    private AspectFrameLayout mAspectFrameLayout;
+    private VideoInfo mVideoInfo;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video);
         ((SeekBar) findViewById(R.id.seekBar)).setOnSeekBarChangeListener(this);
-        findViewById(R.id.button_choose_filter).setOnClickListener(this);
+        findViewById(R.id.video_previous_filter).setOnClickListener(this);
+        findViewById(R.id.video_next_filter).setOnClickListener(this);
         findViewById(R.id.button_save).setOnClickListener(this);
         mSurfaceView = (GLSurfaceView) findViewById(R.id.video_surface);
+        mAspectFrameLayout = (AspectFrameLayout) findViewById(R.id.video_surface_wrapper);
 
         Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
         photoPickerIntent.setType("video/*");
@@ -61,6 +68,12 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
     }
 
     private void initPlayer() {
+        double aspectRatio = mVideoInfo.getWidth() / (double) mVideoInfo.getHeight();
+        if (mVideoInfo.isDisplayRotate()) {
+            aspectRatio = mVideoInfo.getHeight() / (double) mVideoInfo.getWidth();
+        }
+        mAspectFrameLayout.setAspectRatio(aspectRatio);
+
         mMediaPlayer = new MediaPlayer();
         mGPUImage = new GPUImage(this, new IRenderCallback() {
             @Override
@@ -72,7 +85,7 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
                     mMediaPlayer.setSurface(surface);
                     mMediaPlayer.setDataSource(mPath);
                     mMediaPlayer.prepareAsync();
-                    mMediaPlayer.setLooping(false);
+                    mMediaPlayer.setLooping(true);
                     mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                         @Override
                         public void onPrepared(MediaPlayer mp) {
@@ -91,6 +104,7 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
             }
         });
         mGPUImage.setGLSurfaceView(mSurfaceView);
+        mGPUImage.setRotation(Rotation.fromInt(mVideoInfo.getDegrees()));
     }
 
     private void play() {
@@ -117,15 +131,22 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
     @Override
     public void onClick(final View v) {
         switch (v.getId()) {
-            case R.id.button_choose_filter:
-                GPUImageFilterTools.showDialog(this, new GPUImageFilterTools.OnGpuImageFilterChosenListener() {
-
+            case R.id.video_previous_filter:
+                GPUImageFilterTools.showPreviousFilter(this, new GPUImageFilterTools.OnGpuImageFilterChosenListener() {
                     @Override
                     public void onGpuImageFilterChosenListener(final GPUImageFilter filter) {
                         switchFilterTo(filter);
                         mGPUImage.requestRender();
                     }
-
+                });
+                break;
+            case R.id.video_next_filter:
+                GPUImageFilterTools.showNextFilter(this, new GPUImageFilterTools.OnGpuImageFilterChosenListener() {
+                    @Override
+                    public void onGpuImageFilterChosenListener(final GPUImageFilter filter) {
+                        switchFilterTo(filter);
+                        mGPUImage.requestRender();
+                    }
                 });
                 break;
             case R.id.button_save:
@@ -161,9 +182,6 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
             gpuImageFilterGroup.addFilter(filter);
             mGPUImage.setFilter(mFilter);
             mFilterAdjuster = new GPUImageFilterTools.FilterAdjuster(mFilter);
-
-            findViewById(R.id.seekBar).setVisibility(
-                    mFilterAdjuster.canAdjust() ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -191,6 +209,7 @@ public class ActivityVideo extends AppCompatActivity implements SeekBar.OnSeekBa
 
     private void handleImage(final Uri uri) {
         mPath = getRealPathFromURI(uri);
+        mVideoInfo = new VideoInfo(mPath);
         initPlayer();
     }
 

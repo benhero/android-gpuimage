@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package jp.co.cyberagent.android.gpuimage.sample.activity;
+package jp.co.cyberagent.android.gpuimage.sample.view;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.view.View;
 import android.widget.FrameLayout;
+
 
 /**
  * Layout that adjusts to maintain a specific aspect ratio.
@@ -47,6 +50,7 @@ public class AspectFrameLayout extends FrameLayout {
         if (aspectRatio < 0) {
             throw new IllegalArgumentException();
         }
+        Log.w(TAG, "Setting aspect ratio to " + aspectRatio + " (was " + mTargetAspect + ")");
         if (mTargetAspect != aspectRatio) {
             mTargetAspect = aspectRatio;
             requestLayout();
@@ -63,6 +67,9 @@ public class AspectFrameLayout extends FrameLayout {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             return;
         }
+        Log.w(TAG, "onMeasure target=" + mTargetAspect +
+                " width=[" + MeasureSpec.toString(widthMeasureSpec) +
+                "] height=[" + View.MeasureSpec.toString(heightMeasureSpec) + "]");
 
         // Target aspect ratio will be < 0 if it hasn't been set yet.  In that case,
         // we just use whatever we've been handed.
@@ -83,6 +90,8 @@ public class AspectFrameLayout extends FrameLayout {
                 // We're very close already.  We don't want to risk switching from e.g. non-scaled
                 // 1280x720 to scaled 1280x719 because of some floating-point round-off error,
                 // so if we're really close just leave it alone.
+                Log.w(TAG, "aspect ratio is good (target=" + mTargetAspect +
+                        ", view=" + initialWidth + "x" + initialHeight + ")");
             } else {
                 if (aspectDiff > 0) {
                     // limited by narrow width; restrict height
@@ -91,6 +100,8 @@ public class AspectFrameLayout extends FrameLayout {
                     // limited by short height; restrict width
                     initialWidth = (int) (initialHeight * mTargetAspect);
                 }
+                Log.w(TAG, "new size=" + initialWidth + "x" + initialHeight + " + padding " +
+                        horizPadding + "x" + vertPadding);
                 initialWidth += horizPadding;
                 initialHeight += vertPadding;
                 widthMeasureSpec = MeasureSpec.makeMeasureSpec(initialWidth, MeasureSpec.EXACTLY);

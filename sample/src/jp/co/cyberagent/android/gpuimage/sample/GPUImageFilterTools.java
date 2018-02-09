@@ -129,31 +129,6 @@ public class GPUImageFilterTools {
         filters.addFilter("Vignette", FilterType.VIGNETTE);
         filters.addFilter("ToneCurve", FilterType.TONE_CURVE);
 
-        filters.addFilter("Blend (Difference)", FilterType.BLEND_DIFFERENCE);
-        filters.addFilter("Blend (Source Over)", FilterType.BLEND_SOURCE_OVER);
-        filters.addFilter("Blend (Color Burn)", FilterType.BLEND_COLOR_BURN);
-        filters.addFilter("Blend (Color Dodge)", FilterType.BLEND_COLOR_DODGE);
-        filters.addFilter("Blend (Darken)", FilterType.BLEND_DARKEN);
-        filters.addFilter("Blend (Dissolve)", FilterType.BLEND_DISSOLVE);
-        filters.addFilter("Blend (Exclusion)", FilterType.BLEND_EXCLUSION);
-        filters.addFilter("Blend (Hard Light)", FilterType.BLEND_HARD_LIGHT);
-        filters.addFilter("Blend (Lighten)", FilterType.BLEND_LIGHTEN);
-        filters.addFilter("Blend (Add)", FilterType.BLEND_ADD);
-        filters.addFilter("Blend (Divide)", FilterType.BLEND_DIVIDE);
-        filters.addFilter("Blend (Multiply)", FilterType.BLEND_MULTIPLY);
-        filters.addFilter("Blend (Overlay)", FilterType.BLEND_OVERLAY);
-        filters.addFilter("Blend (Screen)", FilterType.BLEND_SCREEN);
-        filters.addFilter("Blend (Alpha)", FilterType.BLEND_ALPHA);
-        filters.addFilter("Blend (Color)", FilterType.BLEND_COLOR);
-        filters.addFilter("Blend (Hue)", FilterType.BLEND_HUE);
-        filters.addFilter("Blend (Saturation)", FilterType.BLEND_SATURATION);
-        filters.addFilter("Blend (Luminosity)", FilterType.BLEND_LUMINOSITY);
-        filters.addFilter("Blend (Linear Burn)", FilterType.BLEND_LINEAR_BURN);
-        filters.addFilter("Blend (Soft Light)", FilterType.BLEND_SOFT_LIGHT);
-        filters.addFilter("Blend (Subtract)", FilterType.BLEND_SUBTRACT);
-        filters.addFilter("Blend (Chroma Key)", FilterType.BLEND_CHROMA_KEY);
-        filters.addFilter("Blend (Normal)", FilterType.BLEND_NORMAL);
-
         filters.addFilter("Lookup (Amatorka)", FilterType.LOOKUP_AMATORKA);
         filters.addFilter("Gaussian Blur", FilterType.GAUSSIAN_BLUR);
         filters.addFilter("Crosshatch", FilterType.CROSSHATCH);
@@ -185,13 +160,57 @@ public class GPUImageFilterTools {
         filters.addFilter("Bilateral Blur", FilterType.BILATERAL_BLUR);
 
         filters.addFilter("Transform (2-D)", FilterType.TRANSFORM2D);
+
+        filters.addFilter("Blend (Difference)", FilterType.BLEND_DIFFERENCE);
+        filters.addFilter("Blend (Source Over)", FilterType.BLEND_SOURCE_OVER);
+        filters.addFilter("Blend (Color Burn)", FilterType.BLEND_COLOR_BURN);
+        filters.addFilter("Blend (Color Dodge)", FilterType.BLEND_COLOR_DODGE);
+        filters.addFilter("Blend (Darken)", FilterType.BLEND_DARKEN);
+        filters.addFilter("Blend (Dissolve)", FilterType.BLEND_DISSOLVE);
+        filters.addFilter("Blend (Exclusion)", FilterType.BLEND_EXCLUSION);
+        filters.addFilter("Blend (Hard Light)", FilterType.BLEND_HARD_LIGHT);
+        filters.addFilter("Blend (Lighten)", FilterType.BLEND_LIGHTEN);
+        filters.addFilter("Blend (Add)", FilterType.BLEND_ADD);
+        filters.addFilter("Blend (Divide)", FilterType.BLEND_DIVIDE);
+        filters.addFilter("Blend (Multiply)", FilterType.BLEND_MULTIPLY);
+        filters.addFilter("Blend (Overlay)", FilterType.BLEND_OVERLAY);
+        filters.addFilter("Blend (Screen)", FilterType.BLEND_SCREEN);
+        filters.addFilter("Blend (Alpha)", FilterType.BLEND_ALPHA);
+        filters.addFilter("Blend (Color)", FilterType.BLEND_COLOR);
+        filters.addFilter("Blend (Hue)", FilterType.BLEND_HUE);
+        filters.addFilter("Blend (Saturation)", FilterType.BLEND_SATURATION);
+        filters.addFilter("Blend (Luminosity)", FilterType.BLEND_LUMINOSITY);
+        filters.addFilter("Blend (Linear Burn)", FilterType.BLEND_LINEAR_BURN);
+        filters.addFilter("Blend (Soft Light)", FilterType.BLEND_SOFT_LIGHT);
+        filters.addFilter("Blend (Subtract)", FilterType.BLEND_SUBTRACT);
+        filters.addFilter("Blend (Chroma Key)", FilterType.BLEND_CHROMA_KEY);
+        filters.addFilter("Blend (Normal)", FilterType.BLEND_NORMAL);
     }
 
     static int index = 0;
 
     public static void showDialog(final Context context,
                                   final OnGpuImageFilterChosenListener listener) {
-//        Toast.makeText(context, filters.names.get(index), Toast.LENGTH_SHORT).show();
+        listener.onGpuImageFilterChosenListener(
+                createFilterForType(context, filters.filters.get(index)));
+        index++;
+        if (index >= filters.filters.size()) {
+            index = 0;
+        }
+    }
+
+    public static void showPreviousFilter(final Context context,
+                                          final OnGpuImageFilterChosenListener listener) {
+        listener.onGpuImageFilterChosenListener(
+                createFilterForType(context, filters.filters.get(index)));
+        index--;
+        if (index < 0) {
+            index = filters.filters.size() - 1;
+        }
+    }
+
+    public static void showNextFilter(final Context context,
+                                      final OnGpuImageFilterChosenListener listener) {
         listener.onGpuImageFilterChosenListener(
                 createFilterForType(context, filters.filters.get(index)));
         index++;
@@ -482,8 +501,9 @@ public class GPUImageFilterTools {
                 adjuster = new BilateralAdjuster().filter(filter);
             } else if (filter instanceof GPUImageTransformFilter) {
                 adjuster = new RotateAdjuster().filter(filter);
+            } else if (filter instanceof GPUImageFilterGroup) {
+                adjuster = new GroupAdjuster().filter(filter);
             } else {
-
                 adjuster = null;
             }
         }
@@ -751,6 +771,20 @@ public class GPUImageFilterTools {
                 float[] transform = new float[16];
                 Matrix.setRotateM(transform, 0, 360 * percentage / 100, 0, 0, 1.0f);
                 getFilter().setTransform3D(transform);
+            }
+        }
+
+        private class GroupAdjuster extends Adjuster<GPUImageFilterGroup> {
+
+            @Override
+            public void adjust(int percentage) {
+                List<GPUImageFilter> filters = getFilter().getMergedFilters();
+                for (GPUImageFilter imageFilter : filters) {
+                    FilterAdjuster adjuster = new FilterAdjuster(imageFilter);
+                    if (adjuster.canAdjust()) {
+                        adjuster.adjust(percentage);
+                    }
+                }
             }
         }
 
